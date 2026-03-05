@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from 'nestjs-typegoose';
 import { ReturnModelType } from '@typegoose/typegoose';
 import { Product } from './product.model';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { RequestUser } from '../auth/rmq-auth.guard';
 
 @Injectable()
 export class ProductsService {
@@ -34,10 +35,17 @@ export class ProductsService {
     return product;
   }
 
-  async update(id: string, dto: UpdateProductDto): Promise<Product> {
+  async update(
+    id: string,
+    dto: UpdateProductDto,
+    currentUser: RequestUser,
+  ): Promise<Product> {
     const product = await this.productModel.findById(id).exec();
     if (!product) {
       throw new NotFoundException('Product not found');
+    }
+    if (product.ownerId !== currentUser.userId) {
+      throw new ForbiddenException('Only the owner can update this product');
     }
     const updated = await this.productModel
       .findByIdAndUpdate(
@@ -56,10 +64,13 @@ export class ProductsService {
     return updated;
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, currentUser: RequestUser): Promise<void> {
     const product = await this.productModel.findById(id).exec();
     if (!product) {
       throw new NotFoundException('Product not found');
+    }
+    if (product.ownerId !== currentUser.userId) {
+      throw new ForbiddenException('Only the owner can delete this product');
     }
     await this.productModel.findByIdAndDelete(id).exec();
   }

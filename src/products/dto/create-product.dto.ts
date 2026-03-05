@@ -12,8 +12,4 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0)
   price: number;
-
-  @IsString()
-  @MinLength(1)
-  ownerId: string;
 }
