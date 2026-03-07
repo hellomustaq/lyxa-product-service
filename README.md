@@ -1,99 +1,87 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Product Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS service that provides product CRUD. Create, list, get, update, and delete products. Protected routes (create, update, delete) require a valid Bearer token; the token is validated by calling the auth-service over RabbitMQ. Only the product owner can update or delete a product.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## What it does
 
-## Description
+- **Products**: Stored in MongoDB via Typegoose (name, description, price, ownerId). Each product has an owner (user id from auth-service).
+- **CRUD**: Create product (owner set from token), list all, get one, update one, delete one.
+- **Auth**: Before create/update/delete, the service sends an RMQ request to auth-service (`auth.validate-token`) with the Bearer token. If valid, the user id is used as owner on create and enforced on update/delete (only owner can update/delete).
+- **Events**: Listens for `user.created` on RabbitMQ and logs it (no persistence).
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Prerequisites
 
-## Project setup
+- Node.js (v18+)
+- MongoDB (e.g. `mongodb://localhost:27017`)
+- RabbitMQ (e.g. `amqp://guest:guest@localhost:5672`)
+- Auth-service running (for token validation and correct queue names)
 
-```bash
-$ npm install
-```
+## Setup
 
-## Compile and run the project
+1. **Install dependencies**
 
-```bash
-# development
-$ npm run start
+   ```bash
+   npm install --legacy-peer-deps
+   ```
 
-# watch mode
-$ npm run start:dev
+2. **Environment**
 
-# production mode
-$ npm run start:prod
-```
+   Copy the example env and set your values:
 
-## Run tests
+   ```bash
+   cp .env.example .env
+   ```
 
-```bash
-# unit tests
-$ npm run test
+   Edit `.env`. Main variables:
 
-# e2e tests
-$ npm run test:e2e
+   | Variable | Description |
+   |----------|-------------|
+   | `PRODUCT_PORT` | HTTP port (default `3001`) |
+   | `PRODUCT_MONGO_URI` | MongoDB connection string |
+   | `RABBITMQ_URL` | RabbitMQ connection URL |
+   | `RABBITMQ_AUTH_QUEUE` | Same queue as auth-service uses for token RPC |
+   | `RABBITMQ_USER_EVENTS_QUEUE` | Queue where auth-service emits `user.created` |
 
-# test coverage
-$ npm run test:cov
-```
+3. **Build**
 
-## Deployment
+   ```bash
+   npm run build
+   ```
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Run
 
 ```bash
-$ npm install -g mau
-$ mau deploy
+# Development (watch mode)
+npm run start:dev
+
+# Production
+npm run start:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Default HTTP port: `3001` (or `PRODUCT_PORT` from `.env`).
 
-## Resources
+## HTTP endpoints
 
-Check out a few resources that may come in handy when working with NestJS:
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/products` | Bearer | Create product (body: name, description?, price). Owner = user from token. |
+| `GET` | `/products` | No | List all products |
+| `GET` | `/products/:id` | No | Get one product |
+| `PATCH` | `/products/:id` | Bearer | Update product (owner only). Body: name?, description?, price? |
+| `DELETE` | `/products/:id` | Bearer | Delete product (owner only) |
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Protected routes require header: `Authorization: Bearer <access_token>` (token issued by auth-service).
 
-## Support
+## RabbitMQ
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- **Client**: Sends `auth.validate-token` RPC to `RABBITMQ_AUTH_QUEUE` (auth-service) to validate the Bearer token and get userId, email, role.
+- **Server**: Listens on `RABBITMQ_USER_EVENTS_QUEUE` for event `user.created` and logs the payload.
 
-## Stay in touch
+## Scripts
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- `npm run build` – Compile
+- `npm run start` – Run once
+- `npm run start:dev` – Run in watch mode
+- `npm run start:prod` – Run compiled (e.g. `node dist/main`)
+- `npm run lint` – Lint
+- `npm run test` – Unit tests
