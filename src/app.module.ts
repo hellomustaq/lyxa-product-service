@@ -4,6 +4,7 @@ import { TypegooseModule } from 'nestjs-typegoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ProductsModule } from './products/products.module';
+import { UserEventsHandler } from './users/user-events.handler';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { ProductsModule } from './products/products.module';
     ),
     ProductsModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, UserEventsHandler],
   providers: [AppService],
 })
 export class AppModule {}
