@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from 'nestjs-typegoose';
+import { InjectModel } from '@m8a/nestjs-typegoose';
 import { ReturnModelType } from '@typegoose/typegoose';
 import { Product } from './product.model';
 import { CreateProductDto } from './dto/create-product.dto';
