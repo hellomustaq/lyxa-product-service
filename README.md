@@ -21,7 +21,7 @@ NestJS service that provides product CRUD. Create, list, get, update, and delete
 1. **Install dependencies**
 
    ```bash
-   npm install --legacy-peer-deps
+   npm install
    ```
 
 2. **Environment**
